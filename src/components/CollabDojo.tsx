@@ -989,6 +989,197 @@ function Notification({ notif }) {
   );
 }
 
+// ─── Calendar Panel ───────────────────────────────────────────────────────────
+function CalendarPanel({ user, isOwner, onAddTask, onToggleTask }) {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDay, setSelectedDay] = useState(today());
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTask, setNewTask] = useState({ title: "", priority: "medium", category: "work", notes: "" });
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+
+  const getTasksForDay = (day) => {
+    const dateStr = `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    return user.tasks.filter(t => t.dueDate === dateStr);
+  };
+
+  const selectedTasks = user.tasks.filter(t => t.dueDate === selectedDay);
+
+  const handleAdd = () => {
+    if (!newTask.title.trim()) return;
+    onAddTask(user.id, { ...newTask, id: uid(), done: false, subtasks: [], dueDate: selectedDay, createdAt: Date.now() });
+    setNewTask({ title: "", priority: "medium", category: "work", notes: "" });
+    setShowAdd(false);
+  };
+
+  const todayStr = today();
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+      <div className="panel-header">
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>{user.emoji}</span>
+          <span className="orbitron" style={{ fontSize: 13, fontWeight: 700 }}>{user.name}'s Calendar</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button className="btn-icon" onClick={prevMonth}>‹</button>
+          <span className="orbitron" style={{ fontSize: 12, color: user.color }}>{MONTHS[month]} {year}</span>
+          <button className="btn-icon" onClick={nextMonth}>›</button>
+        </div>
+      </div>
+
+      <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)" }}>
+        {/* Day labels */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4, marginBottom: 6 }}>
+          {DAYS.map(d => (
+            <div key={d} style={{ textAlign: "center", fontSize: 10, color: "var(--muted)", fontWeight: 700, padding: "2px 0" }}>{d}</div>
+          ))}
+        </div>
+        {/* Calendar grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 4 }}>
+          {[...Array(firstDay)].map((_, i) => <div key={`e${i}`} />)}
+          {[...Array(daysInMonth)].map((_, i) => {
+            const day = i + 1;
+            const dateStr = `${year}-${String(month + 1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+            const isToday = dateStr === todayStr;
+            const isSelected = dateStr === selectedDay;
+            const tasks = getTasksForDay(day);
+            const hasTasks = tasks.length > 0;
+            const allDone = hasTasks && tasks.every(t => t.done);
+
+            return (
+              <div key={day} onClick={() => setSelectedDay(dateStr)} style={{
+                textAlign: "center", padding: "6px 2px", borderRadius: 8, cursor: "pointer",
+                background: isSelected ? `${user.color}33` : isToday ? "rgba(255,255,255,0.06)" : "transparent",
+                border: isToday ? `1px solid ${user.color}88` : isSelected ? `1px solid ${user.color}` : "1px solid transparent",
+                transition: "all .15s", position: "relative",
+              }}>
+                <div style={{ fontSize: 12, fontWeight: isToday ? 800 : 400, color: isToday ? user.color : isSelected ? user.color : "var(--text)" }}>
+                  {day}
+                </div>
+                {hasTasks && (
+                  <div style={{ display: "flex", justifyContent: "center", gap: 2, marginTop: 2 }}>
+                    {tasks.slice(0, 3).map((t, ti) => (
+                      <div key={ti} style={{
+                        width: 5, height: 5, borderRadius: "50%",
+                        background: t.done ? "#10b981" : PRIORITY_COLORS[t.priority],
+                      }} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected day tasks */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "12px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+          <div>
+            <span className="orbitron" style={{ fontSize: 12, color: user.color }}>
+              {selectedDay === todayStr ? "Today" : selectedDay}
+            </span>
+            <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 8 }}>
+              {selectedTasks.length} task{selectedTasks.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {isOwner && (
+            <button className="btn btn-p" style={{ padding: "5px 12px", fontSize: 11 }} onClick={() => setShowAdd(!showAdd)}>
+              + Add
+            </button>
+          )}
+        </div>
+
+        {showAdd && isOwner && (
+          <div className="anim-fade" style={{ padding: 12, background: "rgba(168,85,247,0.08)", borderRadius: 10, marginBottom: 10, border: "1px solid rgba(168,85,247,0.2)" }}>
+            <input className="input" placeholder="Task title…" value={newTask.title}
+              onChange={e => setNewTask(p => ({ ...p, title: e.target.value }))}
+              onKeyDown={e => e.key === "Enter" && handleAdd()}
+              style={{ marginBottom: 8, fontSize: 13 }} autoFocus />
+            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <select className="select" style={{ flex: 1 }} value={newTask.priority} onChange={e => setNewTask(p => ({ ...p, priority: e.target.value }))}>
+                <option value="high">🔴 High</option>
+                <option value="medium">🟡 Medium</option>
+                <option value="low">🟢 Low</option>
+              </select>
+              <select className="select" style={{ flex: 1 }} value={newTask.category} onChange={e => setNewTask(p => ({ ...p, category: e.target.value }))}>
+                <option value="work">💼 Work</option>
+                <option value="personal">🏠 Personal</option>
+                <option value="health">💪 Health</option>
+                <option value="study">📚 Study</option>
+                <option value="other">🗂 Other</option>
+              </select>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn btn-p" onClick={handleAdd}>Add</button>
+              <button className="btn btn-ghost" onClick={() => setShowAdd(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {selectedTasks.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "24px 0", color: "var(--muted)" }}>
+            <div style={{ fontSize: 28, marginBottom: 6 }}>📭</div>
+            <div style={{ fontSize: 12 }}>No tasks for this day</div>
+          </div>
+        ) : (
+          selectedTasks.map(task => (
+            <div key={task.id} className="task-item anim-fade" style={{ opacity: task.done ? 0.6 : 1 }}>
+              <div className={`task-checkbox ${task.done ? "checked" : ""}`}
+                onClick={isOwner ? () => onToggleTask(user.id, task.id) : undefined}
+                style={{ cursor: isOwner ? "pointer" : "default" }}>
+                {task.done && <svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" /></svg>}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, textDecoration: task.done ? "line-through" : "none", color: task.done ? "var(--muted)" : "var(--text)" }}>
+                  {task.title}
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <span className="tag" style={{ background: `${PRIORITY_COLORS[task.priority]}22`, color: PRIORITY_COLORS[task.priority] }}>{task.priority}</span>
+                  <span className="tag" style={{ background: `${CATEGORY_COLORS[task.category]}22`, color: CATEGORY_COLORS[task.category] }}>{task.category}</span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Mini month summary */}
+      <div style={{ padding: "8px 16px", borderTop: "1px solid var(--border)", display: "flex", gap: 12 }}>
+        {["high","medium","low"].map(p => {
+          const count = user.tasks.filter(t => {
+            if (!t.dueDate) return false;
+            const d = new Date(t.dueDate);
+            return d.getMonth() === month && d.getFullYear() === year && !t.done && t.priority === p;
+          }).length;
+          return count > 0 ? (
+            <div key={p} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: PRIORITY_COLORS[p] }} />
+              <span style={{ fontSize: 11, color: "var(--muted)" }}>{count} {p}</span>
+            </div>
+          ) : null;
+        })}
+        <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--muted)" }}>
+          {user.tasks.filter(t => {
+            if (!t.dueDate) return false;
+            const d = new Date(t.dueDate);
+            return d.getMonth() === month && d.getFullYear() === year && t.done;
+          }).length} done this month
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function CollabDojo() {
   const [state, setState] = useState(INITIAL_STATE);
@@ -1199,7 +1390,7 @@ export default function CollabDojo() {
   const { users, activeTab, activeUser, confetti, xpPops, notification } = state;
   const u1 = users.u1, u2 = users.u2;
 
-  const tabIcon = { tasks: "✅", pomodoro: "⏱️", habits: "🌿" };
+  const tabIcon = { tasks: "✅", pomodoro: "⏱️", habits: "🌿", calendar: "📅" };
 
   const renderPanel = (user, isOwner) => {
     if (activeTab === "tasks") return (
@@ -1215,6 +1406,10 @@ export default function CollabDojo() {
       <HabitPanel user={user} isOwner={isOwner}
         onToggleHabit={handleToggleHabit} onAddHabit={handleAddHabit}
         onDeleteHabit={handleDeleteHabit} />
+    );
+    if (activeTab === "calendar") return (
+      <CalendarPanel user={user} isOwner={isOwner}
+        onAddTask={handleAddTask} onToggleTask={handleToggleTask} />
     );
   };
 
@@ -1246,7 +1441,7 @@ export default function CollabDojo() {
           </div>
 
           <div className="tab-bar">
-            {["tasks", "pomodoro", "habits"].map(tab => (
+            {["tasks", "pomodoro", "habits", "calendar"].map(tab => (
               <button key={tab} className={`tab-btn ${activeTab === tab ? "active" : ""}`}
                 onClick={() => setState(s => ({ ...s, activeTab: tab }))}>
                 {tabIcon[tab]} <span style={{ textTransform: "capitalize" }}>{tab}</span>

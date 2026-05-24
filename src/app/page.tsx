@@ -1,6 +1,5 @@
-
-import CollabDojo from "@/components/CollabDojo";
+import NindoPath from "@/components/NindoPath";
 
 export default function Home() {
-  return <CollabDojo />;
+  return <NindoPath />;
 }

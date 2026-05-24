@@ -188,7 +188,7 @@ const isoOf = (d: Date) => d.toISOString().slice(0, 10);
 const addDays = (d: Date, n: number) => { const c = new Date(d); c.setDate(c.getDate() + n); return c; };
 const startOfWeek = (d: Date) => { const c = new Date(d); const day = (c.getDay() + 6) % 7; c.setDate(c.getDate() - day); c.setHours(0,0,0,0); return c; };
 const endOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth()+1, 0);
-const fmtDate = (s: string) => { if (!s) return ""; const d = new Date(s); return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }); };
+const fmtDate = (s: string) => { if (!s) return ""; const d = new Date(s); return d.toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
 const weekKey = (d=new Date()) => isoOf(startOfWeek(d));
 const monthKey = (d=new Date()) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 const yearKey = (d=new Date()) => String(d.getFullYear());
@@ -508,6 +508,8 @@ const AI = {
    ═════════════════════════════════════════════════════════════════════ */
 export default function NindoPath() {
   const [state, setState] = useState<any>(() => ensureDefaults(loadState()));
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
   const [activeTab, setActiveTab] = useState<"home"|"plan"|"progress"|"dojo">("home");
   const [showSettings, setShowSettings] = useState(false);
   const [showWelcome, setShowWelcome] = useState(false);
